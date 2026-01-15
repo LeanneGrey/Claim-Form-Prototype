@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Consultant / Clinical Claim Form — Monthly (V3.1)</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="nhs-header" role="banner">
+    <div class="container">
+      <h1 id="pageTitle">Consultant / Clinical Claim Form — Monthly (V3.1)</h1>
+      <p class="lede">Client-side prototype — data stays in your browser (localStorage). Open <code>index.html</code> to run. No network calls.</p>
+    </div>
+  </header>
+
+  <main class="container" id="main" role="main">
+    <!-- Compact error banner: hidden when no issues -->
+    <div id="errorBanner" class="error-banner" role="alert" aria-live="polite" hidden>
+      <div class="error-banner-content">
+        <strong>There are issues to fix before you can submit. See markers in the form.</strong>
+        <div class="error-actions">
+          <button type="button" id="goToFirstError" class="btn-link">Go to first error</button>
+          <div id="sessionChips" class="chips" aria-hidden="false" role="list"></div>
+        </div>
+      </div>
+    </div>
+
+    <form id="claimForm" novalidate>
+      <!-- A) Reporting context -->
+      <section class="card" aria-labelledby="reportingHeading">
+        <h2 id="reportingHeading">A. Reporting context</h2>
+        <div class="grid grid-2">
+          <label for="reportingMonth">Reporting month (required)
+            <input id="reportingMonth" name="reportingMonth" type="month" required>
+          </label>
+          <div class="muted" style="align-self:center;">
+            <p class="small">Data remains in-browser. Use Save draft to persist locally.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- B) Clinician details -->
+      <section class="card" aria-labelledby="clinicianHeading">
+        <h2 id="clinicianHeading">B. Clinician details</h2>
+        <div class="grid grid-2">
+          <label for="clinicianName">Name (required)
+            <input id="clinicianName" name="clinicianName" type="text" required>
+            <div class="input-error" id="err-clinicianName" aria-live="polite"></div>
+          </label>
+
+          <label for="grade">Grade (required)
+            <select id="grade" name="grade" required>
+              <option value="">Select...</option>
+              <option>Consultant</option>
+              <option>SAS</option>
+              <option>Locum Consultant</option>
+              <option>Other</option>
+            </select>
+            <div class="input-error" id="err-grade" aria-live="polite"></div>
+          </label>
+
+          <label for="esr">Assignment / ESR number (required)
+            <input id="esr" name="esr" type="text" required>
+            <div class="input-error" id="err-esr" aria-live="polite"></div>
+          </label>
+
+          <label for="directorate">Directorate / Specialty (required)
+            <input id="directorate" name="directorate" type="text" required>
+            <div class="input-error" id="err-directorate" aria-live="polite"></div>
+          </label>
+        </div>
+      </section>
+
+      <!-- C) Sessions -->
+      <section class="card" aria-labelledby="sessionsHeading">
+        <h2 id="sessionsHeading">C. Sessions</h2>
+        <div id="sessionsList" class="sessions-list" aria-live="polite"></div>
+
+        <div class="actions" style="margin-top:12px;">
+          <button type="button" id="addSessionBtn" class="btn-secondary">+ Add session</button>
+        </div>
+
+        <div class="monthly-total" id="monthlyTotal" aria-live="polite" title="Monthly total points">
+          Monthly total points: <span id="monthlyTotalValue">0</span>
+        </div>
+      </section>
+
+      <!-- D) Declarations & approvals -->
+      <section class="card" aria-labelledby="declarationsHeading">
+        <h2 id="declarationsHeading">D. Declarations & approvals</h2>
+
+        <div class="grid grid-2">
+          <fieldset class="card-inline" aria-labelledby="clinDeclHeading">
+            <legend id="clinDeclHeading">Clinician declaration (required)</legend>
+
+            <label class="checkbox-inline" for="clinConfirmed">
+              <input id="clinConfirmed" name="clinConfirmed" type="checkbox" required> I confirm the above information is accurate.
+            </label>
+            <div class="input-error" id="err-clinConfirmed" aria-live="polite"></div>
+
+            <label for="clinInitials">Clinician initials (required)
+              <input id="clinInitials" name="clinInitials" type="text" maxlength="10" required>
+              <div class="input-error" id="err-clinInitials" aria-live="polite"></div>
+            </label>
+
+            <label for="clinDate">Date of declaration (required)
+              <input id="clinDate" name="clinDate" type="date" required>
+              <div class="input-error" id="err-clinDate" aria-live="polite"></div>
+            </label>
+          </fieldset>
+
+          <fieldset class="card-inline" aria-labelledby="budgetDeclHeading">
+            <legend id="budgetDeclHeading">Budget holder approval</legend>
+
+            <label for="budgetName">Budget holder name (required)
+              <input id="budgetName" name="budgetName" type="text" required>
+              <div class="input-error" id="err-budgetName" aria-live="polite"></div>
+            </label>
+
+            <label for="budgetInitials">Budget holder initials (required)
+              <input id="budgetInitials" name="budgetInitials" type="text" maxlength="10" required>
+              <div class="input-error" id="err-budgetInitials" aria-live="polite"></div>
+            </label>
+
+            <label for="budgetDate">Date of approval (required)
+              <input id="budgetDate" name="budgetDate" type="date" required>
+              <div class="input-error" id="err-budgetDate" aria-live="polite"></div>
+            </label>
+
+            <label for="budgetEmail">Budget holder email (optional)
+              <input id="budgetEmail" name="budgetEmail" type="email" placeholder="name@trust.nhs.uk">
+            </label>
+
+            <div class="actions">
+              <button type="button" id="prepareEmailBtn" class="btn-secondary" hidden>Prepare email to budget holder</button>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <div class="actions" style="margin-top:12px;">
+        <button type="button" id="saveDraftBtn" class="btn-secondary">Save draft</button>
+        <button type="button" id="loadDraftBtn" class="btn-secondary">Load draft</button>
+        <button type="submit" id="submitBtn" class="btn-primary" disabled>Submit & download JSON / CSV</button>
+        <button type="button" id="resetBtn" class="btn-secondary">Reset</button>
+      </div>
+    </form>
+
+    <footer class="card muted" style="margin-top:14px;">
+      <strong>Privacy note:</strong> This prototype stores draft data in your browser only. No data is transmitted.
+    </footer>
+  </main>
+
+  <script src="assets/app.js" defer></script>
+</body>
+</html>

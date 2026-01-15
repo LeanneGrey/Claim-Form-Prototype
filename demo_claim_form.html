@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clinical Overtime Claim Form (Demo)</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:900px;margin:20px auto;color:#111}
+  h1{font-size:1.25rem}
+  label{display:block;margin-top:10px;font-weight:600}
+  input[type="text"], input[type="number"], input[type="time"], textarea, select{width:100%;padding:6px;margin-top:4px;border:1px solid #ccc;border-radius:4px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border:1px solid #ddd;padding:6px;text-align:left;font-size:0.95rem}
+  .small{font-size:0.9rem;color:#444}
+  .row-actions{display:flex;gap:8px;margin-top:8px}
+  button{padding:8px 12px;border-radius:6px;border:none;background:#0366d6;color:white;cursor:pointer}
+  button.secondary{background:#6c757d}
+  .right{text-align:right}
+  .summary{margin-top:12px;padding:10px;border:1px dashed #ccc;border-radius:6px;background:#fafafa}
+</style>
+</head>
+<body>
+<h1>Clinical Overtime Claim Form — DEMO</h1>
+
+<div>
+  <label>Clinic / Organisation
+    <input id="clinic" type="text" placeholder="Clinic name">
+  </label>
+
+  <label>Department
+    <input id="department" type="text" placeholder="Department">
+  </label>
+
+  <label>Employee name
+    <input id="employee" type="text" placeholder="Full name">
+  </label>
+
+  <label>Employee ID
+    <input id="employeeId" type="text" placeholder="ID or badge number">
+  </label>
+
+  <label>Position / Profession
+    <input id="position" type="text">
+  </label>
+
+  <label>Payroll code
+    <input id="payrollCode" type="text">
+  </label>
+
+  <label>Period / Pay week ending
+    <input id="period" type="date">
+  </label>
+</div>
+
+<label>Reason for overtime
+  <select id="reason">
+    <option value="unexpected">Unexpected clinical demand</option>
+    <option value="staff-shortage">Staff shortage</option>
+    <option value="on-call">On-call escalation</option>
+    <option value="other">Other</option>
+  </select>
+</label>
+
+<h2 class="small">Overtime sessions</h2>
+
+<table id="sessions">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Patient MRN (optional)</th>
+      <th>Activity / brief reason</th>
+      <th>Start</th>
+      <th>Finish</th>
+      <th>Break (min)</th>
+      <th>Net hrs</th>
+      <th>OT ×</th>
+      <th>Rate</th>
+      <th>Amount</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="row-actions">
+  <button type="button" onclick="addRow()">Add row</button>
+  <button type="button" class="secondary" onclick="removeLast()">Remove last</button>
+  <button type="button" class="secondary" onclick="clearRows()">Clear</button>
+</div>
+
+<div class="summary">
+  <div><strong>Total overtime hours:</strong> <span id="totalHours">0.00</span></div>
+  <div><strong>Total amount claimed:</strong> $<span id="totalAmount">0.00</span></div>
+</div>
+
+<h3>Authorisation</h3>
+<label>Employee signature (type name)
+  <input id="employeeSig" type="text" placeholder="Type full name as signature">
+</label>
+<label>Supervisor approval (type name)
+  <input id="supervisorSig" type="text" placeholder="Supervisor name">
+</label>
+
+<div style="margin-top:12px;display:flex;gap:8px">
+  <button onclick="window.print()">Print / Save as PDF</button>
+  <button onclick="exportCSV()">Export CSV</button>
+  <button class="secondary" onclick="resetForm()">Reset</button>
+</div>
+
+<script>
+function addRow(data) {
+  const tbody = document.querySelector('#sessions tbody');
+  const tr = document.createElement('tr');
+
+  const fields = {
+    date: data?.date || '',
+    mrn: data?.mrn || '',
+    reason: data?.reason || '',
+    start: data?.start || '',
+    finish: data?.finish || '',
+    breakmin: data?.breakmin || '0',
+    hours: '0.00',
+    mult: data?.mult || '1.5',
+    rate: data?.rate || '0.00',
+    amount: '0.00'
+  };
+
+  tr.innerHTML = `
+    <td><input type="date" class="r-date" value="${fields.date}"></td>
+    <td><input type="text" class="r-mrn" value="${fields.mrn}" placeholder="MRN"></td>
+    <td><input type="text" class="r-reason" value="${fields.reason}" placeholder="Activity"></td>
+    <td><input type="time" class="r-start" value="${fields.start}"></td>
+    <td><input type="time" class="r-finish" value="${fields.finish}"></td>
+    <td><input type="number" class="r-break" min="0" value="${fields.breakmin}"></td>
+    <td class="r-hours">0.00</td>
+    <td><input type="number" class="r-mult" step="0.1" value="${fields.mult}"></td>
+    <td><input type="number" class="r-rate" step="0.01" value="${fields.rate}"></td>
+    <td class="r-amount">0.00</td>
+    <td><button type="button" onclick="removeRow(this)">✖</button></td>
+  `;
+  tbody.appendChild(tr);
+
+  tr.querySelectorAll('input').forEach(i => i.addEventListener('input', recalc));
+  recalc();
+}
+
+function recalc(){
+  const rows = Array.from(document.querySelectorAll('#sessions tbody tr'));
+  let totalHours = 0, totalAmount = 0;
+  rows.forEach(r => {
+    const start = r.querySelector('.r-start').value;
+    const finish = r.querySelector('.r-finish').value;
+    const breakMin = parseFloat(r.querySelector('.r-break').value || 0);
+    const mult = parseFloat(r.querySelector('.r-mult').value || 1);
+    const rate = parseFloat(r.querySelector('.r-rate').value || 0);
+
+    let hours = 0;
+    if(start && finish){
+      const s = timeToMinutes(start), f = timeToMinutes(finish);
+      let diff = f - s;
+      if(diff < 0) diff += 24*60; // supports overnight
+      diff -= Math.max(0, breakMin);
+      hours = Math.max(0, diff / 60);
+    }
+
+    const amount = +(hours * rate * mult).toFixed(2);
+    r.querySelector('.r-hours').textContent = hours.toFixed(2);
+    r.querySelector('.r-amount').textContent = amount.toFixed(2);
+
+    totalHours += hours;
+    totalAmount += amount;
+  });
+
+  document.getElementById('totalHours').textContent = totalHours.toFixed(2);
+  document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
+}
+
+function timeToMinutes(t){
+  const parts = t.split(':').map(Number);
+  return parts[0]*60 + parts[1];
+}
+
+function removeRow(btn){
+  const tr = btn.closest('tr');
+  tr.remove();
+  recalc();
+}
+
+function removeLast(){
+  const tbody = document.querySelector('#sessions tbody');
+  if(tbody.lastElementChild) tbody.lastElementChild.remove();
+  recalc();
+}
+
+function clearRows(){
+  document.querySelector('#sessions tbody').innerHTML = '';
+  recalc();
+}
+
+function resetForm(){
+  if(!confirm('Reset form? This will clear all entries.')) return;
+  document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea').forEach(i => i.value = '');
+  clearRows();
+}
+
+function exportCSV(){
+  const headers = ['date','mrn','activity','start','finish','break_min','net_hours','multiplier','rate','amount'];
+  const rows = Array.from(document.querySelectorAll('#sessions tbody tr')).map(r => ([
+    r.querySelector('.r-date').value,
+    r.querySelector('.r-mrn').value,
+    r.querySelector('.r-reason').value,
+    r.querySelector('.r-start').value,
+    r.querySelector('.r-finish').value,
+    r.querySelector('.r-break').value,
+    r.querySelector('.r-hours').textContent,
+    r.querySelector('.r-mult').value,
+    r.querySelector('.r-rate').value,
+    r.querySelector('.r-amount').textContent
+  ]));
+  let csv = headers.join(',') + "\n" + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'overtime_claim.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// add an initial empty row
+addRow();
+
+</script>
+</body>
+</html>
